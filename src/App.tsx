@@ -1,18 +1,39 @@
+import { useState } from "react"
 import { PieChart, Pie, Cell, Tooltip } from "recharts"
-import { useScreenTime, formatTime } from "./hooks/use-screen-time"
+import {
+  useScreenTime,
+  useAvailableDates,
+  formatTime,
+} from "./hooks/use-screen-time"
 
 const COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "hsl(var(--muted-foreground))",
+  "hsl(220, 70%, 50%)",
+  "hsl(0, 65%, 50%)",
+  "hsl(140, 50%, 45%)",
+  "hsl(280, 55%, 55%)",
+  "hsl(35, 80%, 50%)",
+  "hsl(190, 70%, 45%)",
+  "hsl(330, 65%, 50%)",
 ]
 
+function formatDateLabel(dateStr: string) {
+  const today = new Date()
+  const d = new Date(dateStr + "T00:00:00")
+
+  const diff = new Date(today).setHours(0, 0, 0, 0) - d.getTime()
+  const days = Math.round(diff / 86_400_000)
+
+  if (days === 0) return "Today"
+  if (days === 1) return "Yesterday"
+  return dateStr
+}
+
 function App() {
-  const { sites, totalTime } = useScreenTime()
+  const dates = useAvailableDates()
+  const today = dates.length > 0 ? dates[0] : new Date().toISOString().slice(0, 10)
+  const [selectedDate, setSelectedDate] = useState(today)
+
+  const { sites, totalTime } = useScreenTime(selectedDate)
 
   const chartData = sites.map((s) => ({
     name: s.domain,
@@ -28,9 +49,24 @@ function App() {
         </span>
       </div>
 
+      {dates.length > 1 && (
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          {dates.map((date) => (
+            <button
+              key={date}
+              onClick={() => setSelectedDate(date)}
+              data-active={date === selectedDate}
+              className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=false]:bg-muted data-[active=false]:text-muted-foreground hover:opacity-80"
+            >
+              {formatDateLabel(date)}
+            </button>
+          ))}
+        </div>
+      )}
+
       {sites.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-8">
-          No data yet. Start browsing!
+          No data for this day.
         </p>
       )}
 

@@ -4,6 +4,18 @@ let startTime = Date.now()
 
 const SAVE_INTERVAL = 10_000
 
+function todayKey() {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    return `${y}-${m}-${day}`
+}
+
+function storageKey(domain: string) {
+    return `${todayKey()}|${domain}`
+}
+
 function getDomain(url: string) {
     try {
         return new URL(url).hostname
@@ -13,11 +25,12 @@ function getDomain(url: string) {
 }
 
 async function saveTime(domain: string, timeSpent: number) {
-    const result = await chrome.storage.local.get(domain)
-    const previousTime = (result[domain] as number) || 0
+    const key = storageKey(domain)
+    const result = await chrome.storage.local.get(key)
+    const previousTime = (result[key] as number) || 0
 
     await chrome.storage.local.set({
-        [domain]: previousTime + timeSpent,
+        [key]: previousTime + timeSpent,
     })
 }
 
