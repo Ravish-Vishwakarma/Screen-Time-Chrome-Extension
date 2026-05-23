@@ -11,7 +11,6 @@ import {
 } from "recharts"
 import {
   useScreenTime,
-  useAvailableDates,
   useAggregateStats,
   formatTime,
 } from "./hooks/use-screen-time"
@@ -26,24 +25,12 @@ const COLORS = [
   "hsl(330, 65%, 50%)",
 ]
 
-function formatDateLabel(dateStr: string) {
-  const today = new Date()
-  const d = new Date(dateStr + "T00:00:00")
-
-  const diff = new Date(today).setHours(0, 0, 0, 0) - d.getTime()
-  const days = Math.round(diff / 86_400_000)
-
-  if (days === 0) return "Today"
-  if (days === 1) return "Yesterday"
-  return dateStr
-}
+type Tab = "today" | "history"
 
 function App() {
-  const dates = useAvailableDates()
   const todayStr = new Date().toISOString().slice(0, 10)
-  const defaultDate = dates.length > 0 ? dates[0] : todayStr
-  const [selectedDate, setSelectedDate] = useState(defaultDate)
-  const { sites, totalTime: dayTotal } = useScreenTime(selectedDate)
+  const [tab, setTab] = useState<Tab>("today")
+  const { sites: todaySites, totalTime: todayTotal } = useScreenTime(todayStr)
   const { siteTotals, mostActiveDay, leastActiveDay, mostVisitedSite } =
     useAggregateStats()
 
@@ -55,14 +42,19 @@ function App() {
   }, [])
 
   const hasData = siteTotals.length > 0
-  const isToday = selectedDate === todayStr
+  const isHistory = tab === "history"
 
   const barData = siteTotals.slice(0, 6).map((s) => ({
     name: s.domain.length > 10 ? s.domain.slice(0, 8) + "…" : s.domain,
     value: s.totalSeconds,
   }))
 
-  const chartData = sites.map((s) => ({
+  const pieSites = isHistory ? siteTotals : todaySites
+  const pieTotal = isHistory
+    ? siteTotals.reduce((a, s) => a + s.totalSeconds, 0)
+    : todayTotal
+
+  const chartData = pieSites.map((s) => ({
     name: s.domain,
     value: s.totalSeconds,
   }))
@@ -83,25 +75,25 @@ function App() {
   return (
     <div className="w-80 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-lg font-semibold">{formatTime(dayTotal)}</span>
+        <span className="text-lg font-semibold">{formatTime(pieTotal)}</span>
 
         {hasData && (
-          <div className="flex gap-1 overflow-x-auto pb-0.5">
-            {dates.map((date) => (
+          <div className="flex gap-1 pb-0.5">
+            {(["today", "history"] as const).map((t) => (
               <button
-                key={date}
-                onClick={() => setSelectedDate(date)}
-                data-active={date === selectedDate}
+                key={t}
+                onClick={() => setTab(t)}
+                data-active={tab === t}
                 className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=false]:bg-muted data-[active=false]:text-muted-foreground hover:opacity-80"
               >
-                {formatDateLabel(date)}
+                {t === "today" ? "Today" : "History"}
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {!isToday && hasData && (
+      {isHistory && hasData && (
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <div className="rounded-md border px-2 py-1.5">
             <p className="text-muted-foreground">Top Site</p>
@@ -109,16 +101,16 @@ function App() {
           </div>
           <div className="rounded-md border px-2 py-1.5">
             <p className="text-muted-foreground">Most Day</p>
-            <p className="truncate font-medium">{formatDateLabel(mostActiveDay)}</p>
+            <p className="truncate font-medium">{mostActiveDay}</p>
           </div>
           <div className="rounded-md border px-2 py-1.5">
             <p className="text-muted-foreground">Least Day</p>
-            <p className="truncate font-medium">{formatDateLabel(leastActiveDay)}</p>
+            <p className="truncate font-medium">{leastActiveDay}</p>
           </div>
         </div>
       )}
 
-      {!isToday && hasData && (
+      {isHistory && hasData && (
         <div className="flex justify-center">
           <BarChart width={288} height={160} data={barData}>
             <XAxis
@@ -135,17 +127,13 @@ function App() {
         </div>
       )}
 
-      <p className="text-sm text-muted-foreground">
-        {formatDateLabel(selectedDate)} — {formatTime(dayTotal)}
-      </p>
-
-      {sites.length === 0 && (
+      {pieSites.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-4">
-          No data for this day.
+          {isHistory ? "No history data." : "No data for today."}
         </p>
       )}
 
-      {sites.length > 0 && (
+      {pieSites.length > 0 && (
         <div className="flex justify-center">
           <PieChart width={240} height={180}>
             <Pie
@@ -166,9 +154,9 @@ function App() {
         </div>
       )}
 
-      {sites.length > 0 && (
+      {pieSites.length > 0 && (
         <div className="space-y-1">
-          {sites.map((site, i) => (
+          {pieSites.map((site, i) => (
             <div
               key={site.domain}
               className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
