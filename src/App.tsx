@@ -41,6 +41,30 @@ function App() {
     setDeleting(false)
   }, [])
 
+  const exportCSV = useCallback(async () => {
+    const result = await chrome.storage.local.get(null)
+    const rows = Object.entries(result)
+      .filter(([key]) => key.includes("|"))
+      .map(([key, seconds]) => {
+        const [date, ...rest] = key.split("|")
+        const domain = rest.join("|")
+        const total = seconds as number
+        const h = Math.floor(total / 3600)
+        const m = Math.floor((total % 3600) / 60)
+        const s = total % 60
+        return `${date},${domain},${total},${h}h ${m}m ${s}s`
+      })
+
+    const csv = "Date,Domain,Total Seconds,Time\n" + rows.join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "screen-time-export.csv"
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [])
+
   const hasData = siteTotals.length > 0
   const isHistory = tab === "history"
 
@@ -176,8 +200,14 @@ function App() {
         </div>
       )}
 
-      {hasData && (
-        <div className="flex justify-center pt-1">
+      {isHistory && hasData && (
+        <div className="flex items-center justify-center gap-3 pt-1">
+          <button
+            onClick={exportCSV}
+            className="text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            Export CSV
+          </button>
           <button
             onClick={handleDelete}
             disabled={deleting}
