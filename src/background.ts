@@ -2,7 +2,7 @@ let activeTabId: number | null = null
 let activeDomain: string | null = null
 let startTime = Date.now()
 
-const SAVE_INTERVAL = 10_000
+const SAVE_INTERVAL = 5_000
 
 function todayKey() {
     const d = new Date()
@@ -39,6 +39,8 @@ function formatBadge(seconds: number): string {
     const mins = Math.floor(seconds / 60)
     if (mins < 60) return `${mins}m`
     const hours = Math.floor(mins / 60)
+    const rem = mins % 60
+    if (hours < 10) return `${hours}:${String(rem).padStart(2, "0")}`
     if (hours < 100) return `${hours}h`
     return "99+"
 }

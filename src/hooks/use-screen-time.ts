@@ -5,6 +5,14 @@ export interface SiteTime {
   totalSeconds: number
 }
 
+export interface AggregateStats {
+  siteTotals: SiteTime[]
+  mostActiveDay: string
+  leastActiveDay: string
+  mostVisitedSite: string
+  totalAllTime: number
+}
+
 function formatTime(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
@@ -83,4 +91,53 @@ export function useScreenTime(dateKey?: string) {
   const totalTime = sites.reduce((acc, s) => acc + s.totalSeconds, 0)
 
   return { sites, totalTime, formatTime }
+}
+
+export function useAggregateStats() {
+  const [stats, setStats] = useState<AggregateStats>({
+    siteTotals: [],
+    mostActiveDay: "",
+    leastActiveDay: "",
+    mostVisitedSite: "",
+    totalAllTime: 0,
+  })
+
+  const fetchStats = useCallback(async () => {
+    const result = await chrome.storage.local.get(null)
+    const domainTotals: Record<string, number> = {}
+    const dayTotals: Record<string, number> = {}
+
+    for (const [key, value] of Object.entries(result)) {
+      const idx = key.indexOf("|")
+      if (idx === -1) continue
+      const date = key.slice(0, idx)
+      const domain = key.slice(idx + 1)
+      const seconds = value as number
+
+      domainTotals[domain] = (domainTotals[domain] || 0) + seconds
+      dayTotals[date] = (dayTotals[date] || 0) + seconds
+    }
+
+    const siteTotals = Object.entries(domainTotals)
+      .map(([domain, totalSeconds]) => ({ domain, totalSeconds }))
+      .sort((a, b) => b.totalSeconds - a.totalSeconds)
+
+    const totalAllTime = siteTotals.reduce((acc, s) => acc + s.totalSeconds, 0)
+
+    const days = Object.entries(dayTotals).sort((a, b) => b[1] - a[1])
+    const mostActiveDay = days[0]?.[0] ?? ""
+    const leastActiveDay = days[days.length - 1]?.[0] ?? ""
+    const mostVisitedSite = siteTotals[0]?.domain ?? ""
+
+    setStats({ siteTotals, mostActiveDay, leastActiveDay, mostVisitedSite, totalAllTime })
+  }, [])
+
+  useEffect(() => {
+    fetchStats()
+    const listener = () => fetchStats()
+    chrome.storage.local.onChanged.addListener(listener)
+    return () => chrome.storage.local.onChanged.removeListener(listener)
+  }, [fetchStats])
+
+  return stats
 }
