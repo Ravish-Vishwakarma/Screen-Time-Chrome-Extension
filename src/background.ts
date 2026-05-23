@@ -34,6 +34,30 @@ async function saveTime(domain: string, timeSpent: number) {
     })
 }
 
+function formatBadge(seconds: number): string {
+    if (seconds < 60) return ""
+    const mins = Math.floor(seconds / 60)
+    if (mins < 60) return `${mins}m`
+    const hours = Math.floor(mins / 60)
+    if (hours < 100) return `${hours}h`
+    return "99+"
+}
+
+async function updateBadge() {
+    if (!activeDomain) {
+        chrome.action.setBadgeText({ text: "" })
+        return
+    }
+
+    const key = storageKey(activeDomain)
+    const result = await chrome.storage.local.get(key)
+    const total = (result[key] as number) || 0
+    const text = formatBadge(total)
+
+    chrome.action.setBadgeText({ text })
+    chrome.action.setBadgeBackgroundColor({ color: [80, 80, 80, 255] })
+}
+
 async function flushCurrentSession() {
     if (!activeDomain) return
 
@@ -44,6 +68,7 @@ async function flushCurrentSession() {
 
     await saveTime(activeDomain, timeSpent)
     startTime = now
+    await updateBadge()
 }
 
 async function trackTab(tabId: number) {
@@ -60,6 +85,7 @@ async function trackTab(tabId: number) {
     activeTabId = tabId
     activeDomain = newDomain
     startTime = Date.now()
+    await updateBadge()
 }
 
 setInterval(flushCurrentSession, SAVE_INTERVAL)
@@ -72,4 +98,20 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     if (tabId === activeTabId && changeInfo.status === "complete") {
         await trackTab(tabId)
     }
+})
+
+chrome.runtime.onStartup.addListener(async () => {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (tabs[0]?.id) trackTab(tabs[0].id)
+})
+
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+    if (windowId === chrome.windows.WINDOW_ID_NONE) {
+        activeDomain = null
+        chrome.action.setBadgeText({ text: "" })
+        return
+    }
+
+    const tabs = await chrome.tabs.query({ active: true, windowId })
+    if (tabs[0]?.id) trackTab(tabs[0].id)
 })
