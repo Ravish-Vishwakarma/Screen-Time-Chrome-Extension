@@ -2,6 +2,12 @@
 
 A Chrome extension that tracks how much time you spend on each website, organized by day.
 
+## Screenshots
+<img width="314" height="592" alt="image" src="https://github.com/user-attachments/assets/e237cc0c-0384-4957-9206-18425185982e" />
+<img width="311" height="594" alt="image" src="https://github.com/user-attachments/assets/81d6a9a5-f8c8-420f-877b-e58b9b8806d1" />
+
+
+
 ## Features
 
 - **Automatic time tracking** — records time per domain, saved every 5 seconds and on tab switches
