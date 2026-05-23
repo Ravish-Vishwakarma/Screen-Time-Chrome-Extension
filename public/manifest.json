@@ -12,7 +12,13 @@
     "background": {
         "service_worker": "background.js"
     },
+    "icons": {
+        "128": "icon.png"
+    },
     "action": {
-        "default_popup": "index.html"
+        "default_popup": "index.html",
+        "default_icon": {
+            "128": "icon.png"
+        }
     }
 }

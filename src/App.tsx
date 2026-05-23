@@ -70,6 +70,7 @@ function App() {
 
   const barData = siteTotals.slice(0, 6).map((s) => ({
     name: s.domain.length > 10 ? s.domain.slice(0, 8) + "…" : s.domain,
+    fullName: s.domain,
     value: s.totalSeconds,
   }))
 
@@ -85,12 +86,12 @@ function App() {
 
   function tooltipFn(props: Record<string, unknown>) {
     const active = props.active as boolean | undefined
-    const payload = props.payload as Array<{ name: string; value: number }> | undefined
+    const payload = props.payload as Array<{ name: string; value: number; payload: { fullName?: string } }> | undefined
     if (!active || !payload?.length) return null
     const d = payload[0]
     return (
       <div className="rounded-md border bg-popover px-3 py-1.5 text-xs shadow-md">
-        <p className="font-medium">{d.name}</p>
+        <p className="font-medium">{d.payload?.fullName || d.name}</p>
         <p className="text-muted-foreground">{formatTime(d.value)}</p>
       </div>
     )
