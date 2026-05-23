@@ -24,6 +24,27 @@ function getDomain(url: string) {
     }
 }
 
+function shouldTrack(url: string): boolean {
+    try {
+        const parsed = new URL(url)
+        const protocol = parsed.protocol
+
+        if (protocol === "about:" || protocol === "chrome:" ||
+            protocol === "edge:" || protocol === "brave:" ||
+            protocol === "chrome-extension:" || protocol === "moz-extension:") {
+            return false
+        }
+
+        if (parsed.hostname === "newtab" || parsed.hostname === "") {
+            return false
+        }
+
+        return true
+    } catch {
+        return false
+    }
+}
+
 async function saveTime(domain: string, timeSpent: number) {
     const key = storageKey(domain)
     const result = await chrome.storage.local.get(key)
@@ -76,7 +97,13 @@ async function flushCurrentSession() {
 async function trackTab(tabId: number) {
     const tab = await chrome.tabs.get(tabId)
 
-    if (!tab.url) return
+    if (!tab.url || !shouldTrack(tab.url)) {
+        await flushCurrentSession()
+        activeDomain = null
+        activeTabId = null
+        chrome.action.setBadgeText({ text: "" })
+        return
+    }
 
     const newDomain = getDomain(tab.url)
 
