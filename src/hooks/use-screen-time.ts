@@ -41,12 +41,7 @@ export function useScreenTime() {
     return () => chrome.storage.local.onChanged.removeListener(listener)
   }, [fetchData])
 
-  const resetAll = useCallback(async () => {
-    await chrome.storage.local.clear()
-    setSites([])
-  }, [])
-
   const totalTime = sites.reduce((acc, s) => acc + s.totalSeconds, 0)
 
-  return { sites, totalTime, resetAll, formatTime }
+  return { sites, totalTime, formatTime }
 }
